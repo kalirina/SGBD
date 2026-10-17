@@ -2,48 +2,73 @@ package disque;
 import java.nio.ByteBuffer;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
+import java.util.List;
 import java.io.IOException;
-import java.io.FileWriter;
 import java.io.File;
-import java.util.Scanner;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
 
 public class DiskManager {
 	private String dmDir;
 	private int pageSize;
+	private int pageCount;
 	private RandomAccessFile file;
-	private ArrayList<Integer> freePages;
+	private List<Integer> freePages = new ArrayList<>();
 	
-	void Init(String dmDir, int pageSize) {
+	public void Init(String dmDir, int pageSize) {
+		
 		this.dmDir = dmDir;
-		this.pageSize = pageSize;
+		
+		File metaFile = new File(dmDir + "/metadata.bin");
+		
+		if(metaFile.exists()) {
+			try {
+				DataInputStream in = new DataInputStream(new FileInputStream(metaFile));
+				int savedPageSize = in.readInt();
+				
+				if(savedPageSize != pageSize) {
+					in.close();
+					throw new RuntimeException("page incompatible: attendu " + savedPageSize);
+				}
+				
+				this.pageSize = savedPageSize;
+				this.pageCount = in.readInt();
+				
+				int freeCount = in.readInt();
+				for(int i=0; i<freeCount; i++) {
+					freePages.add(in.readInt());
+				}
+				in.close();
+			}
+			catch(IOException e) {
+				throw new RuntimeException(e);
+			}	
+			
+		} else {
+			this.pageSize = pageSize;
+			this.pageCount = 0;
+		}
+		
 		try {
 			file = new RandomAccessFile(dmDir + "/data", "rw");
 		}
-		catch (Exception e) {
+		catch(Exception e) {
 			e.printStackTrace();
 		}
-
-		freePages = new ArrayList<>();
-		File f = new File(dmDir + "/freePages.txt");
-		if (f.exists()) {
-			try {
-				Scanner sc = new Scanner(f);
-				while (sc.hasNextInt())
-					freePages.add(sc.nextInt());
-				sc.close();
-			}
-			catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}
 	}
+	
 	void Save() {
-		// sauvegarder les infos sur freePages pour des prochaines utilisations
+		// sauvegarder les infos sur metadata.bin pour des prochaines utilisations
 		try {
-			FileWriter wr = new FileWriter(dmDir + "/freePages.txt");
+			DataOutputStream out = new DataOutputStream(new FileOutputStream(dmDir + "/metadata.bin"));
+			out.writeInt(pageSize);
+			out.writeInt(pageCount);
+			out.writeInt(freePages.size());
 			for (Integer page : freePages)
-				wr.write(page + "\n");
-			wr.close();
+				out.writeInt(page);
+			out.close();
 		}
 		catch (IOException e) {
 			throw new RuntimeException(e);
@@ -57,8 +82,9 @@ public class DiskManager {
 				page = freePages.remove(0); // la première page
 			// Sinon, on crée une nouvelle pqge à la fin fu fichier
 			else {
-				page = (int)(file.length() / pageSize);
-				file.setLength(file.length() + pageSize); // on aggrandit le fichier
+				page = pageCount;
+				pageCount++;
+				file.setLength((long) pageCount * pageSize); // on aggrandit le fichier
 			}
 			return new PageId(page);
 		}
@@ -70,7 +96,7 @@ public class DiskManager {
 		try {
 			// verifier le cas si page n'existe pas
 			PageId id = (PageId) ipid;
-			file.seek(id.pageId * this.pageSize);
+			file.seek((long)id.pageId * this.pageSize);
 			
 			byte[] data = new byte[pageSize];
 			file.readFully(data);
@@ -86,7 +112,7 @@ public class DiskManager {
 	void WritePage(IPageId ipid, ByteBuffer buffer) {
 		try {
 			PageId id = (PageId) ipid;
-			file.seek(id.pageId * this.pageSize);
+			file.seek((long)id.pageId * this.pageSize);
 			
 			byte[] data = new byte[pageSize];
 			buffer.rewind();

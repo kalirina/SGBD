@@ -1,6 +1,6 @@
 package disque;
 
-public class PageId implements IPageId{
+public class PageId implements IPageId {
 	public int pageId;
 	
 	public PageId(int pageId) {
@@ -9,5 +9,17 @@ public class PageId implements IPageId{
 	@Override
 	public String toString() {
 	    return String.valueOf(pageId);
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (this==obj) {
+			return true;
+		}
+		if (!(obj instanceof PageId)) {
+			return false;
+		}
+		PageId other = (PageId) obj;
+		return this.pageId == other.pageId;
 	}
 }

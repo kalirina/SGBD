@@ -10,14 +10,23 @@ import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.io.FileInputStream;
 
-public class DiskManager {
+public class DiskManager implements IDiskManager {
 	private String dmDir;
 	private int pageSize;
 	private int pageCount;
 	private RandomAccessFile file;
 	private List<Integer> freePages = new ArrayList<>();
+	private boolean initActivated = false;
 	
-	public void Init(String dmDir, int pageSize) {
+	public DiskManager(){
+		
+	}
+	
+	public void Init(String dmDir, int pageSize) throws DiskManagerException {
+		
+		if (initActivated) {
+			throw new DiskManagerException("Init a déjà été appelé sur ce DiskManager");
+		}
 		
 		this.dmDir = dmDir;
 		
@@ -30,7 +39,7 @@ public class DiskManager {
 				
 				if(savedPageSize != pageSize) {
 					in.close();
-					throw new RuntimeException("page incompatible: attendu " + savedPageSize);
+					throw new DiskManagerException("page incompatible: attendu " + savedPageSize);
 				}
 				
 				this.pageSize = savedPageSize;
@@ -43,7 +52,7 @@ public class DiskManager {
 				in.close();
 			}
 			catch(IOException e) {
-				throw new RuntimeException(e);
+				throw new DiskManagerException(e);
 			}	
 			
 		} else {
@@ -54,12 +63,13 @@ public class DiskManager {
 		try {
 			file = new RandomAccessFile(dmDir + "/data", "rw");
 		}
-		catch(Exception e) {
-			e.printStackTrace();
+		catch(IOException e) {
+			throw new DiskManagerException(e);
 		}
+		initActivated = true;
 	}
 	
-	void Save() {
+	public void Save() throws DiskManagerException {
 		// sauvegarder les infos sur metadata.bin pour des prochaines utilisations
 		try {
 			DataOutputStream out = new DataOutputStream(new FileOutputStream(dmDir + "/metadata.bin"));
@@ -71,10 +81,10 @@ public class DiskManager {
 			out.close();
 		}
 		catch (IOException e) {
-			throw new RuntimeException(e);
+			throw new DiskManagerException(e);
 		}
 	}
-	IPageId AllocPage() {
+	public IPageId AllocPage() throws DiskManagerException {
 		try {
 			int page;
 			// S'il existe une page libre, on la réutilise
@@ -89,10 +99,10 @@ public class DiskManager {
 			return new PageId(page);
 		}
 		catch (IOException e) {
-			throw new RuntimeException(e);
+			throw new DiskManagerException(e);
 		}
 	}
-	void ReadPage(IPageId ipid, ByteBuffer buffer) {
+	public void ReadPage(IPageId ipid, ByteBuffer buffer) throws DiskManagerException {
 		try {
 			// verifier le cas si page n'existe pas
 			PageId id = (PageId) ipid;
@@ -106,10 +116,10 @@ public class DiskManager {
 			buffer.flip();
 		}
 		catch (IOException e) {
-			throw new RuntimeException(e);
+			throw new DiskManagerException(e);
 		}
 	}
-	void WritePage(IPageId ipid, ByteBuffer buffer) {
+	public void WritePage(IPageId ipid, ByteBuffer buffer) throws DiskManagerException {
 		try {
 			PageId id = (PageId) ipid;
 			file.seek((long)id.pageId * this.pageSize);
@@ -121,12 +131,20 @@ public class DiskManager {
 			file.write(data);
 		}
 		catch (IOException e) {
-			throw new RuntimeException(e);
+			throw new DiskManagerException(e);
 		}
 	}
-	void DeallocPage(IPageId ipid) {
+	public void DeallocPage(IPageId ipid) {
 		PageId id = (PageId) ipid;
 		if (!freePages.contains(id.pageId))
 			freePages.add(id.pageId);
+	}
+	
+	public int GetActivePageCount() { // nombre des pages déjà allouées 
+		return this.pageCount - this.freePages.size();
+	}
+	
+	public int GetPageSize() {
+		return this.pageSize;
 	}
 }

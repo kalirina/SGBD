@@ -95,6 +95,17 @@ public class DiskManagerTests {
 		}
 	}
 	
+	public static void TestPageHashCode() {
+		IPageId p1 = new PageId(2);
+		IPageId p2 = new PageId(2);
+		
+		if(p1.equals(p2)) {
+			System.out.println("Test page hash code : success !");
+		} else {
+			System.out.println("Test page hash code : ERROR : page1=" + p1.hashCode() + ", page2=" + p2.hashCode());
+		}
+	}
+	
 	public static void main(String[] args) throws DiskManagerException {
 		
 		try {
@@ -115,7 +126,10 @@ public class DiskManagerTests {
 			TestPlusieursPages(dm);
 			System.out.println();
 			
-			TestPageSizeIncompatible(dmDir);	
+			TestPageSizeIncompatible(dmDir);
+			System.out.println();
+			
+			TestPageHashCode();
 		} catch (DiskManagerException e) {
 			System.out.println("Error : " + e.getMessage());
 		}

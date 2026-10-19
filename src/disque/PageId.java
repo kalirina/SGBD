@@ -22,4 +22,8 @@ public class PageId implements IPageId {
 		PageId other = (PageId) obj;
 		return this.pageId == other.pageId;
 	}
+	@Override
+    public int hashCode() {
+		return Integer.hashCode(pageId);
+	}
 }

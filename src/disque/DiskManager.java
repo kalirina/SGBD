@@ -69,8 +69,8 @@ public class DiskManager implements IDiskManager {
 		initActivated = true;
 	}
 	
-	public void Save() throws DiskManagerException {
-		// sauvegarder les infos sur metadata.bin pour des prochaines utilisations
+	public void Save() throws DiskManagerException { // sauvegarder les infos sur metadata.bin pour des prochaines utilisations
+		this.CheckInitStatus();
 		try {
 			DataOutputStream out = new DataOutputStream(new FileOutputStream(dmDir + "/metadata.bin"));
 			out.writeInt(pageSize);
@@ -85,6 +85,7 @@ public class DiskManager implements IDiskManager {
 		}
 	}
 	public IPageId AllocPage() throws DiskManagerException {
+		this.CheckInitStatus();
 		try {
 			int page;
 			// S'il existe une page libre, on la réutilise
@@ -103,6 +104,7 @@ public class DiskManager implements IDiskManager {
 		}
 	}
 	public void ReadPage(IPageId ipid, ByteBuffer buffer) throws DiskManagerException {
+		this.CheckInitStatus();
 		try {
 			// verifier le cas si page n'existe pas
 			PageId id = (PageId) ipid;
@@ -120,6 +122,7 @@ public class DiskManager implements IDiskManager {
 		}
 	}
 	public void WritePage(IPageId ipid, ByteBuffer buffer) throws DiskManagerException {
+		this.CheckInitStatus();
 		try {
 			PageId id = (PageId) ipid;
 			file.seek((long)id.pageId * this.pageSize);
@@ -134,17 +137,24 @@ public class DiskManager implements IDiskManager {
 			throw new DiskManagerException(e);
 		}
 	}
-	public void DeallocPage(IPageId ipid) {
+	public void DeallocPage(IPageId ipid) throws DiskManagerException {
+		this.CheckInitStatus();
 		PageId id = (PageId) ipid;
 		if (!freePages.contains(id.pageId))
 			freePages.add(id.pageId);
 	}
 	
-	public int GetActivePageCount() { // nombre des pages déjà allouées 
+	public int GetActivePageCount(){ // nombre des pages déjà allouées 
 		return this.pageCount - this.freePages.size();
 	}
 	
 	public int GetPageSize() {
 		return this.pageSize;
+	}
+	
+	private void CheckInitStatus() throws DiskManagerException {
+		if (!initActivated) {
+			throw new DiskManagerException("Init n'a pas encore été appelé !");
+		}
 	}
 }

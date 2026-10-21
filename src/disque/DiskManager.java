@@ -28,6 +28,10 @@ public class DiskManager implements IDiskManager {
 			throw new DiskManagerException("Init a déjà été appelé sur ce DiskManager");
 		}
 		
+		if (pageSize <= 0) {
+	        throw new DiskManagerException("pageSize invalide : doit être strictement positif (reçu " + pageSize + ")");
+	    }
+		
 		this.dmDir = dmDir;
 		
 		File metaFile = new File(dmDir + "/metadata.bin");

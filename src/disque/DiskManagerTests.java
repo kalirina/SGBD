@@ -95,6 +95,105 @@ public class DiskManagerTests {
 		}
 	}
 	
+	public static void TestBufferNull(DiskManager dm) throws DiskManagerException {
+
+	    IPageId ipid = dm.AllocPage();
+
+	    boolean exceptWrite = false;
+	    try {
+	        dm.WritePage(ipid, null);
+	    } catch (DiskManagerException e) {
+	        exceptWrite = true;
+	    }
+
+	    boolean exceptRead = false;
+	    try {
+	        dm.ReadPage(ipid, null);
+	    } catch (DiskManagerException e) {
+	        exceptRead = true;
+	    }
+
+	    if (exceptWrite && exceptRead) {
+	        System.out.println("Test buffer null : success !");
+	    } else {
+	        System.out.println("Test buffer null : ERROR : write=" + exceptWrite + ", read=" + exceptRead);
+	    }
+	}
+
+	public static void TestBufferTailleIncorrecte(DiskManager dm) throws DiskManagerException {
+
+	    IPageId ipid = dm.AllocPage();
+	    ByteBuffer bufferTropPetit = ByteBuffer.allocate(2); // pageSize = 4, donc incorrect
+
+	    boolean exceptWrite = false;
+	    try {
+	        dm.WritePage(ipid, bufferTropPetit);
+	    } catch (DiskManagerException e) {
+	        exceptWrite = true;
+	    }
+
+	    boolean exceptRead = false;
+	    try {
+	        dm.ReadPage(ipid, bufferTropPetit);
+	    } catch (DiskManagerException e) {
+	        exceptRead = true;
+	    }
+
+	    if (exceptWrite && exceptRead) {
+	        System.out.println("Test buffer taille incorrecte : success !");
+	    } else {
+	        System.out.println("Test buffer taille incorrecte : ERROR : write=" + exceptWrite + ", read=" + exceptRead);
+	    }
+	}
+
+	public static void TestOperationPageDesallouee(DiskManager dm) throws DiskManagerException {
+
+	    IPageId ipid = dm.AllocPage();
+	    dm.DeallocPage(ipid);
+
+	    ByteBuffer buffer = ByteBuffer.allocate(4);
+	    buffer.putInt(1);
+
+	    boolean exceptWrite = false;
+	    try {
+	        dm.WritePage(ipid, buffer);
+	    } catch (DiskManagerException e) {
+	        exceptWrite = true;
+	    }
+
+	    boolean exceptRead = false;
+	    try {
+	        dm.ReadPage(ipid, ByteBuffer.allocate(4));
+	    } catch (DiskManagerException e) {
+	        exceptRead = true;
+	    }
+
+	    if (exceptWrite && exceptRead) {
+	        System.out.println("Test operation sur page desallouee : success !");
+	    } else {
+	        System.out.println("Test operation sur page desallouee : ERROR : write=" + exceptWrite + ", read=" + exceptRead);
+	    }
+	}
+
+	public static void TestSecondDealloc(DiskManager dm) throws DiskManagerException {
+
+	    IPageId ipid = dm.AllocPage();
+	    dm.DeallocPage(ipid);
+
+	    boolean except = false;
+	    try {
+	        dm.DeallocPage(ipid); // deuxieme appel sur la meme page
+	    } catch (DiskManagerException e) {
+	        except = true;
+	    }
+
+	    if (except) {
+	        System.out.println("Test second dealloc : success : exception levée!");
+	    } else {
+	        System.out.println("Test second dealloc : ERROR : aucune exception levée !");
+	    }
+	}
+	
 	public static void main(String[] args) throws DiskManagerException {
 		
 		try {
@@ -115,7 +214,20 @@ public class DiskManagerTests {
 			TestPlusieursPages(dm);
 			System.out.println();
 			
-			TestPageSizeIncompatible(dmDir);	
+			TestPageSizeIncompatible(dmDir);
+			System.out.println();
+
+			TestBufferNull(dm);
+			System.out.println();
+
+			TestBufferTailleIncorrecte(dm);
+			System.out.println();
+
+			TestOperationPageDesallouee(dm);
+			System.out.println();
+
+			TestSecondDealloc(dm);
+			
 		} catch (DiskManagerException e) {
 			System.out.println("Error : " + e.getMessage());
 		}

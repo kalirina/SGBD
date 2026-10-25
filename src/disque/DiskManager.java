@@ -107,11 +107,15 @@ public class DiskManager implements IDiskManager {
 			throw new DiskManagerException(e);
 		}
 	}
-	public void ReadPage(IPageId ipid, ByteBuffer buffer) throws DiskManagerException {
+	public void ReadPage(IPageId ipid, ByteBuffer buffer) throws DiskManagerException { //bytebuffer needs exception buffer == null(null pointer exc.) and buffer.capacity() != pageSize (BufferPvergowException)
 		this.CheckInitStatus();
+		this.CheckBuffer(buffer);
+		
+		PageId id = (PageId) ipid;
+		this.CheckPageAllocated(id.pageId);
+		
 		try {
 			// verifier le cas si page n'existe pas
-			PageId id = (PageId) ipid;
 			file.seek((long)id.pageId * this.pageSize);
 			
 			byte[] data = new byte[pageSize];
@@ -125,27 +129,32 @@ public class DiskManager implements IDiskManager {
 			throw new DiskManagerException(e);
 		}
 	}
-	public void WritePage(IPageId ipid, ByteBuffer buffer) throws DiskManagerException {
+	public void WritePage(IPageId ipid, ByteBuffer buffer) throws DiskManagerException { //bytebuffer needs exception
 		this.CheckInitStatus();
+		this.CheckBuffer(buffer);
+		
+		PageId id = (PageId) ipid;
+		this.CheckPageAllocated(id.pageId);
+		
 		try {
-			PageId id = (PageId) ipid;
 			file.seek((long)id.pageId * this.pageSize);
 			
 			byte[] data = new byte[pageSize];
 			buffer.rewind();
 			buffer.get(data);
-			
 			file.write(data);
 		}
 		catch (IOException e) {
 			throw new DiskManagerException(e);
 		}
 	}
-	public void DeallocPage(IPageId ipid) throws DiskManagerException {
+	public void DeallocPage(IPageId ipid) throws DiskManagerException { // second dealloc exception 
 		this.CheckInitStatus();
+		
 		PageId id = (PageId) ipid;
-		if (!freePages.contains(id.pageId))
-			freePages.add(id.pageId);
+		this.CheckPageAllocated(id.pageId);
+		
+		freePages.add(id.pageId);
 	}
 	
 	public int GetActivePageCount(){ // nombre des pages déjà allouées 
@@ -159,6 +168,21 @@ public class DiskManager implements IDiskManager {
 	private void CheckInitStatus() throws DiskManagerException {
 		if (!initActivated) {
 			throw new DiskManagerException("Init n'a pas encore été appelé !");
+		}
+	}
+	
+	private void CheckBuffer(ByteBuffer buffer) throws DiskManagerException{
+		if (buffer == null) {
+			throw new DiskManagerException("Le buffer ne peut pas être null !");
+		}
+		if (buffer.capacity() != pageSize) {
+			throw new DiskManagerException("Le buffer doit être de même taille que page size ! Attendu : " + pageSize + ", reçu : " + buffer.capacity());
+		}
+	}
+	
+	private void CheckPageAllocated(int pageId) throws DiskManagerException {
+		if (freePages.contains(pageId)) {
+			throw new DiskManagerException("Page désalloué ou inexistante : " + pageId);
 		}
 	}
 }
